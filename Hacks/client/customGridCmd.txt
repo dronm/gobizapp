@@ -1,0 +1,12 @@
+	@grid-event="customCmdHandler"
+
+
+const clearSessions = () => {
+
+}
+const customCmdHandler = (cmd: any) => {
+	if (cmd === 'clear_sessions') {
+		clearSessions();
+	}
+}
+

@@ -1,0 +1,12 @@
+		{
+			id: "role_id",
+			header: t("UserList.columns.role"),
+			field: userFields.role_id,
+			controlType: ControlType.appEnum,
+			formatOpts: <FormatAppEnumOpts>{
+				locale: Locale.ru,
+				enumId: "role_types",
+			},
+			sort: GridColSortOrder.desc,
+		},
+

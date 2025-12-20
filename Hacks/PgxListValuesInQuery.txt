@@ -1,0 +1,13 @@
+	catIds := make([]int64, len(catKeys))
+	for i, kModel := range catKeys {
+		catIds[i] = kModel.ID.GetValue()
+	}
+
+	if _, err := conn.Exec(ctx,
+		`DELETE FROM product_links WHERE product_id = ANY($1) AND product_cat_id = ANY($2)`,
+		productIds,
+		catIds,
+	); err != nil {
+		return fmt.Errorf("DELETE: %v", err)
+	}
+

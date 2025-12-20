@@ -1,0 +1,54 @@
+<template>
+	<Button 
+		@click="onClick" 
+		:title="$t('UserGridCmdClearSessions.title')" 
+		variant="btn-cmd"
+	>
+		{{ $t("UserGridCmdClearSessions.caption") }}
+		<font-awesome-icon :icon="['fas', 'trash']" />
+	</Button>
+</template>
+
+<script setup lang="ts">
+import Button from "@/lib/components/Button.vue";
+
+const emit = defineEmits(["command"]);
+
+const props = defineProps();
+
+const onClick = () => {
+	emit("command", "clear_sessions");
+};
+</script>
+
+<template>
+	<Button @click="onClick" :title="t('GridCmdDelete.title')" variant="btn-cmd">
+		<font-awesome-icon :icon="['fas', 'xmark']" />
+	</Button>
+</template>
+
+//********************************* with row
+<script setup lang="ts">
+import { useI18n } from "vue-i18n";
+
+import Button from "./Button.vue";
+import { type GridCurrentCell } from "../types/grid";
+
+const emit = defineEmits(["command"]);
+
+interface Props {
+	getCurrentCell?: () => GridCurrentCell;
+}
+
+const { getCurrentCell } = defineProps<Props>();
+
+const { t } = useI18n();
+
+const onClick = () => {
+	if (!getCurrentCell || getCurrentCell().row === undefined) {
+		return;
+	}
+	emit("command", "delete_row");
+};
+</script>
+
