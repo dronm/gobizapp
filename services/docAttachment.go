@@ -232,6 +232,7 @@ func (s *DocAttachmentService) DelFile(ctx context.Context, ref models.Ref, cont
 	if ref.DataType == nil || ref.Keys.ID == 0 {
 		return  fmt.Errorf("ref not set")
 	}
+	
 	poolConn, connID, err := s.DB.GetPrimary()
 	if err != nil {
 		return fmt.Errorf("GetPrimary() failed: %v", err)
