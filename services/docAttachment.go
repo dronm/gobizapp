@@ -229,8 +229,8 @@ func (s *DocAttachmentService) ClearCache(baseDir string, ref models.Ref, conten
 }
 
 func (s *DocAttachmentService) DelFile(ctx context.Context, ref models.Ref, contentID string) error {
-	if ref.DataType != nil || ref.Keys.ID == 0 {
-		return  fmt.Errorf("DelFile(): ref not set")
+	if ref.DataType == nil || ref.Keys.ID == 0 {
+		return  fmt.Errorf("ref not set")
 	}
 	poolConn, connID, err := s.DB.GetPrimary()
 	if err != nil {
@@ -257,8 +257,8 @@ func (s *DocAttachmentService) DelFile(ctx context.Context, ref models.Ref, cont
 func (s *DocAttachmentService) GetFile(ctx context.Context, ref models.Ref, contentID string) (
 	cacheFileName string, attachmentName string, retErr error,
 ) {
-	if ref.DataType != nil || ref.Keys.ID == 0 {
-		return  "", "", fmt.Errorf("GetFile(): ref not set")
+	if ref.DataType == nil || ref.Keys.ID == 0 {
+		return  "", "", fmt.Errorf("ref not set")
 	}
 
 	poolConn, connID, err := s.DB.GetSecondary("")
