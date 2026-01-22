@@ -75,10 +75,10 @@ func (s *DocAttachmentService) GenThumbnail(attName, pName, realName string) err
 		fExt = strings.ToLower(fileParts[len(fileParts)-1])
 	}
 
-	pdftoppm_fmt := "-l 1 -scale-to 300 -jpeg %s %s" //-q no comment or errors
+	pdftoppmFmt := "-l 1 -scale-to 300 -jpeg %s %s" //-q no comment or errors
 
-	var cmd_name string
-	var cmd_s string
+	var cmdName string
+	var cmdStr string
 	var pdf bool
 	if fExt == "doc" || fExt == "docx" || fExt == "xls" || fExt == "xlsx" || fExt == "odt" || fExt == "ods" {
 		// openoffice first to pdf
@@ -91,7 +91,7 @@ func (s *DocAttachmentService) GenThumbnail(attName, pName, realName string) err
 		}
 		// got full pdf attName.pdf
 		// pdf to image
-		if err := s.runCMD("pdftoppm", fmt.Sprintf(pdftoppm_fmt, attName+".pdf", pName), pName, true); err != nil {
+		if err := s.runCMD("pdftoppm", fmt.Sprintf(pdftoppmFmt, attName+".pdf", pName), pName, true); err != nil {
 			return err
 		}
 		os.Remove(attName + ".pdf") // remove temp full pdf file
@@ -99,15 +99,15 @@ func (s *DocAttachmentService) GenThumbnail(attName, pName, realName string) err
 
 	} else if fExt == "pdf" {
 		pdf = true
-		cmd_name = "pdftoppm"
-		cmd_s = fmt.Sprintf(pdftoppm_fmt, attName, pName)
+		cmdName = "pdftoppm"
+		cmdStr = fmt.Sprintf(pdftoppmFmt, attName, pName)
 
 	} else {
-		cmd_name = "convert"
-		cmd_s = fmt.Sprintf("-define jpeg:size=500x180 %s -auto-orient -thumbnail 250x100 -unsharp 0x.5 %s", attName, pName)
+		cmdName = "convert"
+		cmdStr = fmt.Sprintf("-define jpeg:size=500x180 %s -auto-orient -thumbnail 250x100 -unsharp 0x.5 %s", attName, pName)
 	}
 
-	return s.runCMD(cmd_name, cmd_s, pName, pdf)
+	return s.runCMD(cmdName, cmdStr, pName, pdf)
 }
 
 func (s *DocAttachmentService) GenAttachmentThumbnail(baseDir string, refDataType string, refID int, fileInfo *models.DocAttachmentContentInfo, attBuf io.Reader) ([]byte, error) {
@@ -213,22 +213,25 @@ func (s *DocAttachmentService) AddFile(ctx context.Context, file multipart.File,
 }
 
 func (s *DocAttachmentService) ClearCache(baseDir string, ref models.Ref, contentID string) error {
-	att_n := s.GetAttachmentCacheFileName(baseDir, *ref.DataType, ref.Keys.ID, contentID)
-	if FileExists(att_n) {
-		if err := os.Remove(att_n); err != nil {
-			return fmt.Errorf("ClearCache os.Remove() on att_n failed: %v", err)
+	attName := s.GetAttachmentCacheFileName(baseDir, *ref.DataType, ref.Keys.ID, contentID)
+	if FileExists(attName) {
+		if err := os.Remove(attName); err != nil {
+			return fmt.Errorf("ClearCache os.Remove() on attName failed: %v", err)
 		}
 	}
-	preview_fn := s.GetPreviewCacheFileName(baseDir, *ref.DataType, ref.Keys.ID, contentID)
-	if FileExists(preview_fn) {
-		if err := os.Remove(preview_fn); err != nil {
-			return fmt.Errorf("ClearCache os.Remove() on preview_fn failed: %v", err)
+	previewFileName := s.GetPreviewCacheFileName(baseDir, *ref.DataType, ref.Keys.ID, contentID)
+	if FileExists(previewFileName) {
+		if err := os.Remove(previewFileName); err != nil {
+			return fmt.Errorf("ClearCache os.Remove() on previewFileName failed: %v", err)
 		}
 	}
 	return nil
 }
 
-func (s *DocAttachmentService) DelFile(ctx context.Context, ref models.Ref, contentId string) error {
+func (s *DocAttachmentService) DelFile(ctx context.Context, ref models.Ref, contentID string) error {
+	if ref.DataType != nil || ref.Keys.ID == 0 {
+		return  fmt.Errorf("DelFile(): ref not set")
+	}
 	poolConn, connID, err := s.DB.GetPrimary()
 	if err != nil {
 		return fmt.Errorf("GetPrimary() failed: %v", err)
@@ -243,17 +246,21 @@ func (s *DocAttachmentService) DelFile(ctx context.Context, ref models.Ref, cont
 			AND content_info->>'id' = $3`,
 		ref.DataType,
 		ref.Keys.ID,
-		contentId,
+		contentID,
 	); err != nil {
 		return fmt.Errorf("conn.Exec() delete failed: %v", err)
 	}
 
-	return s.ClearCache(".", ref, contentId)
+	return s.ClearCache(".", ref, contentID)
 }
 
-func (s *DocAttachmentService) GetFile(ctx context.Context, ref models.Ref, contentId string) (
+func (s *DocAttachmentService) GetFile(ctx context.Context, ref models.Ref, contentID string) (
 	cacheFileName string, attachmentName string, retErr error,
 ) {
+	if ref.DataType != nil || ref.Keys.ID == 0 {
+		return  "", "", fmt.Errorf("GetFile(): ref not set")
+	}
+
 	poolConn, connID, err := s.DB.GetSecondary("")
 	if err != nil {
 		retErr = fmt.Errorf("GetSecondary() failed: %v", err)
@@ -262,7 +269,7 @@ func (s *DocAttachmentService) GetFile(ctx context.Context, ref models.Ref, cont
 	defer s.DB.Release(poolConn, connID)
 	conn := poolConn.Conn()
 
-	var attId int64
+	var attID int64
 	if err := conn.QueryRow(context.Background(),
 		`SELECT
 			id,
@@ -273,13 +280,13 @@ func (s *DocAttachmentService) GetFile(ctx context.Context, ref models.Ref, cont
 			AND content_info->>'id' = $3`,
 		ref.DataType,
 		ref.Keys.ID,
-		contentId,
-	).Scan(&attId, &attachmentName); err != nil {
+		contentID,
+	).Scan(&attID, &attachmentName); err != nil {
 		retErr = fmt.Errorf("conn.QueryRow() select failed: %v", err)
 		return
 	}
 
-	cacheFileName = s.GetAttachmentCacheFileName(".", *ref.DataType, ref.Keys.ID, contentId)
+	cacheFileName = s.GetAttachmentCacheFileName(".", *ref.DataType, ref.Keys.ID, contentID)
 	if !FileExists(cacheFileName) {
 		// no cache, read from db && save
 		var fileContent []byte
@@ -288,7 +295,7 @@ func (s *DocAttachmentService) GetFile(ctx context.Context, ref models.Ref, cont
 				content_data
 			FROM attachments
 			WHERE id = $1`,
-			attId,
+			attID,
 		).Scan(&fileContent); err != nil {
 			retErr = fmt.Errorf("conn.QueryRow() select content_data failed: %v", err)
 			return
@@ -307,3 +314,4 @@ func (s *DocAttachmentService) GetFile(ctx context.Context, ref models.Ref, cont
 
 	return
 }
+

@@ -1,0 +1,1 @@
+find . -type f -name "*.go" ! -path "./vendor/*" -exec sed -i 's/github.com\/dronm\/gobizap\/v2/github.com\/dronm\/gobizapp/g' {} \;
