@@ -32,7 +32,7 @@ type DocAttachment struct {
 type DocAttachment_get_file struct {
 	Ref       Ref    `form:"ref" json:"ref" binding:"required"`
 	ContentId string `form:"content_id" json:"content_id" binding:"required"`
-	Inline    bool   `form:"inline" json:"inline" binding:"required"`
+	Inline    bool   `form:"inline" json:"inline"`
 }
 
 type DocAttachment_delete_file struct {
